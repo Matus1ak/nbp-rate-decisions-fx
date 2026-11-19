@@ -12,7 +12,18 @@ def fetch_rates(currency_code, start_date, end_date):
     info_mes = f"{currency_code} {start_date} {end_date}"
 
     for i in range(1,REQUESTS_NUMBER+1):
-        response = requests.get(url, timeout=10)
+        try: 
+            response = requests.get(url, timeout=10)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+
+            print(f"{info_mes}: {type(e).__name__} ; attempt {i} out of {REQUESTS_NUMBER}")
+
+            if i == REQUESTS_NUMBER: 
+                raise
+            else: 
+                time.sleep(2**(i-1))
+                continue
+        
         status = response.status_code
 
         match status:
@@ -27,11 +38,15 @@ def fetch_rates(currency_code, start_date, end_date):
                 print(f"{info_mes}: {response.text}")
                 response.raise_for_status()
             case status if 500 <= status < 600:
-                print(f"{info_mes}: {response.text} ; attempt {i} out of {REQUESTS_NUMBER}")
-                time.sleep(2**(i-1))
+                print(f"{info_mes} {status}: {response.text} ; attempt {i} out of {REQUESTS_NUMBER}")
+
+                if i == REQUESTS_NUMBER: 
+                    response.raise_for_status()
+                else: 
+                    time.sleep(2**(i-1))               
 
             case _:
-                print(f"{info_mes} {status} : {response.text}")
+                print(f"{info_mes} {status}: {response.text}")
                 response.raise_for_status()
 
     
@@ -47,9 +62,3 @@ def split_to_chunks(start_date, end_date):
         chunk_start = chunk_end+timedelta(days=1)
 
     return chunks
-
-
-
-
-
-        
